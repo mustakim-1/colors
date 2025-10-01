@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Max Color Palette Designer</title>
+
+<!--
+/**************************************************************
+*
+*   STYLES
+*
+**************************************************************/
+-->
+    <style>
+        :root {
+            --bg-color: #191b1f;
+            --card-bg-color: #232529;
+            --text-color: #f0f0f0;
+            --text-muted: #8b949e;
+            --primary-accent: #1e90ff; /* Dodger Blue */
+            --border-color: #30363d;
+            --success-color: #22c55e;
+            --fail-color: #ef4444;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-family-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            --card-border-radius: 12px;
+            --control-border-radius: 8px;
+        }
+
+        /* --- 1. Base & Layout --- */
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: var(--font-family); margin: 0; padding: clamp(1rem, 5vw, 3rem); font-size: 16px; min-height: 100vh; box-sizing: border-box; }
+        .container { width: 100%; max-width: 1500px; margin: 0 auto; }
+        .page-header { text-align: center; margin-bottom: 2rem; }
+        .page-header h1 { margin: 0; font-size: 2.5rem; }
+        .page-header p { margin-top: 0.5rem; color: var(--text-muted); font-size: 1.1rem; }
+
+        /* --- 2. Controls Panel --- */
+        .controls { background-color: var(--card-bg-color); padding: 1.5rem; border-radius: var(--card-border-radius); margin-bottom: 2.5rem; border: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: center; gap: 1.5rem 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .control-group { display: flex; align-items: center; gap: 1rem; }
+        .control-group label { font-weight: 500; white-space: nowrap; color: var(--text-muted); }
+        
+        input[type="color"] { width: 44px; height: 44px; border-radius: 50%; cursor: pointer; border: 2px solid var(--border-color); -webkit-appearance: none; -moz-appearance: none; appearance: none; background-color: transparent; padding: 0; overflow: hidden; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; padding: 0; }
+        input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
+
+        .slider-group { flex-grow: 1; max-width: 180px; }
+        .slider-group div { display: flex; justify-content: space-between; margin-bottom: 0.25rem; }
+        input[type="range"] { width: 100%; }
+
+        .toggle-buttons { display: flex; background-color: var(--bg-color); padding: 0.5rem; border-radius: var(--control-border-radius); }
+        .toggle-buttons button { flex-grow: 1; background-color: transparent; color: var(--text-muted); border: none; padding: 0.6rem 0.5rem; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+        .toggle-buttons button:hover { background-color: var(--border-color); color: var(--text-color); }
+        .toggle-buttons button.active { background-color: var(--primary-accent); color: white; }
+
+        .action-buttons { justify-content: flex-end; }
+        .action-buttons button { background-color: #333; color: var(--text-muted); border: 1px solid var(--border-color); width: 44px; height: 44px; border-radius: var(--control-border-radius); cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; }
+        .action-buttons button:hover { background-color: var(--border-color); color: var(--text-color); }
+        .action-buttons button#exportBtn { background-color: #4a4a4a; }
+
+        /* --- 3. Palette Grid & Cards --- */
+        .palette-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+        .color-card { background-color: var(--card-bg-color); border-radius: var(--card-border-radius); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; border: 1px solid var(--border-color); }
+        .color-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+        
+        .card__swatch { height: 120px; position: relative; cursor: pointer; }
+        .lock-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.3); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease; opacity: 0; }
+        .color-card:hover .lock-btn { opacity: 1; }
+        .lock-btn:hover { background: rgba(0,0,0,0.5); }
+        .lock-btn svg { fill: white; opacity: 0.8; }
+        .lock-btn.locked { opacity: 1; background: var(--primary-accent); }
+        
+        .card__info { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; flex-grow: 1; }
+        .color-codes-wrapper { display: flex; flex-direction: column; gap: 0.5rem; }
+        .color-code { font-family: var(--font-family-mono); cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; transition: background-color 0.2s; }
+        .color-code:hover { background-color: var(--border-color); }
+        .color-code .type { color: var(--text-muted); font-weight: bold; }
+        .primary-code { font-size: 1.1rem; font-weight: bold; }
+        .secondary-code { font-size: 0.85rem; color: var(--text-muted); }
+        .secondary-code .value { color: var(--text-color); }
+
+        .card__accessibility { border-top: 1px solid var(--border-color); padding-top: 1rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .contrast-check { display: flex; justify-content: space-between; align-items: center; }
+        .contrast-check .badge { font-weight: bold; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; }
+        .contrast-check .pass { background-color: var(--success-color); color: white; }
+        .contrast-check .fail { background-color: var(--fail-color); color: white; }
+
+        /* --- 4. Modal & Utilities --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 1000; }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal { background: var(--card-bg-color); padding: 2rem; border-radius: var(--card-border-radius); border: 1px solid var(--border-color); width: 90%; max-width: 600px; transform: scale(0.95) translateY(10px); transition: all 0.3s ease; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+        .modal-overlay.visible .modal { transform: scale(1) translateY(0); }
+        .modal h2 { margin-top: 0; }
+        .modal-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-radius: var(--control-border-radius); background: var(--bg-color); padding: 0.5rem; }
+        .modal-tabs button { flex-grow: 1; background: transparent; color: var(--text-muted); border: none; padding: 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+        .modal-tabs button.active { background: var(--primary-accent); color: white; }
+        #exportOutput { width: 100%; height: 200px; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: var(--control-border-radius); font-family: var(--font-family-mono); padding: 1rem; box-sizing: border-box; resize: vertical; }
+        .modal-actions { margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .modal-actions button { background: #333; color: var(--text-muted); border: 1px solid var(--border-color); padding: 0.75rem 1.5rem; border-radius: var(--control-border-radius); cursor: pointer; transition: all 0.2s; }
+        .modal-actions button#copyExportBtn { background-color: var(--primary-accent); color: white; border-color: var(--primary-accent); }
+        .copy-feedback { color: var(--success-color); opacity: 0; transition: opacity 0.3s; font-weight: 500; }
+        [data-tooltip] { position: relative; }
+        [data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s 0.3s; pointer-events: none; z-index: 100; }
+        [data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+    </style>
+</head>
+<body>
+
+<!--
+/**************************************************************
+*
+*   HTML STRUCTURE
+*
+**************************************************************/
+-->
+    <div class="container">
+        <header class="page-header">
+            <h1>Pro Max Palette Designer</h1>
+            <p>Generate, refine, and export production-ready color systems.</p>
+        </header>
+
+        <section class="controls">
+            <div class="control-group">
+                <label for="colorPicker">Base:</label>
+                <input type="color" id="colorPicker">
+                <div class="slider-group">
+                    <div><label for="swatchCount">Colors:</label><span id="swatchCountLabel">5</span></div>
+                    <input type="range" id="swatchCount" min="3" max="9" value="5">
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Mode:</label>
+                <div class="toggle-buttons" id="ruleButtons">
+                    <button data-mode="monochromatic">Mono</button>
+                    <button data-mode="analogous">Analog</button>
+                    <button data-mode="complementary">Comp</button>
+                    <button data-mode="split-complementary">Split</button>
+                    <button data-mode="triadic">Triad</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Format:</label>
+                <div class="toggle-buttons" id="formatButtons">
+                    <button data-format="hex">HEX</button>
+                    <button data-format="rgb">RGB</button>
+                    <button data-format="hsl">HSL</button>
+                </div>
+            </div>
+            <div class="action-buttons control-group">
+                <button id="randomBtn" data-tooltip="Random Palette"><svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="currentColor"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2.5 15.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm-7 10c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg></button>
+                <button id="exportBtn" data-tooltip="Export Palette"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
+            </div>
+        </section>
+
+        <main class="palette-grid" id="paletteGrid"></main>
+    </div>
+
+    <!-- ADDED: Modal HTML -->
+    <div class="modal-overlay" id="exportModalOverlay">
+        <div class="modal" id="exportModal">
+            <h2>Export Palette</h2>
+            <div class="modal-tabs" id="exportTabs">
+                <button class="active" data-export-format="css">CSS</button>
+                <button data-export-format="scss">SCSS</button>
+                <button data-export-format="json">JSON</button>
+            </div>
+            <textarea id="exportOutput" readonly spellcheck="false"></textarea>
+            <div class="modal-actions">
+                <span class="copy-feedback" id="copyFeedback"></span>
+                <div>
+                    <button id="copyExportBtn">Copy to Clipboard</button>
+                    <button id="closeModalBtn">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- END ADDED: Modal HTML -->
+
+
+<!--
+/**************************************************************
+*
+*   JAVASCRIPT LOGIC
+*
+**************************************************************/
+-->
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        const state = {
+            baseColor: '#1e90ff',
+            mode: 'monochromatic',
+            count: 5,
+            displayFormat: 'hex',
+            locked: [null, null, null, null, null],
+            palette: []
+        };
+
+        const ui = {
+            colorPicker: document.getElementById('colorPicker'),
+            ruleButtons: document.getElementById('ruleButtons'),
+            formatButtons: document.getElementById('formatButtons'),
+            paletteGrid: document.getElementById('paletteGrid'),
+            randomBtn: document.getElementById('randomBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            swatchCount: document.getElementById('swatchCount'),
+            swatchCountLabel: document.getElementById('swatchCountLabel'),
+            exportModalOverlay: document.getElementById('exportModalOverlay'),
+            // ADDED: Modal UI elements
+            exportModal: document.getElementById('exportModal'),
+            exportTabs: document.getElementById('exportTabs'),
+            exportOutput: document.getElementById('exportOutput'),
+            copyExportBtn: document.getElementById('copyExportBtn'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            copyFeedback: document.getElementById('copyFeedback'),
+        };
+        
+        const Color = {
+            hexToRgb: hex => { const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : null; },
+            rgbToHex: ({r,g,b}) => "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1).toUpperCase(),
+            rgbToHsl: ({r,g,b}) => { r/=255,g/=255,b/=255; let max=Math.max(r,g,b),min=Math.min(r,g,b); let h,s,l=(max+min)/2; if(max==min){h=s=0}else{let d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4} h/=6} return {h:h*360,s:s*100,l:l*100}; },
+            hslToRgb: ({h,s,l}) => { s/=100,l/=100; let c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2,r=0,g=0,b=0; if(0<=h&&h<60){r=c,g=x,b=0}else if(60<=h&&h<120){r=x,g=c,b=0}else if(120<=h&&h<180){r=0,g=c,b=x}else if(180<=h&&h<240){r=0,g=x,b=c}else if(240<=h&&h<300){r=x,g=0,b=c}else if(300<=h&&h<360){r=c,g=0,b=x} return {r:Math.round((r+m)*255),g:Math.round((g+m)*255),b:Math.round((b+m)*255)}; },
+            getLuminance: ({r,g,b}) => [r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)}).reduce((acc, v, i) => acc + v * [0.2126, 0.7152, 0.0722][i], 0),
+            getContrast: (rgb1, rgb2) => { const l1=Color.getLuminance(rgb1), l2=Color.getLuminance(rgb2); return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05); }
+        };
+
+        function generatePalette() {
+            const baseHsl = Color.rgbToHsl(Color.hexToRgb(state.baseColor));
+            let paletteHsl = [];
+            
+            const hueStep = 360 / 12;
+
+            for (let i = 0; i < state.count; i++) {
+                if (state.locked[i]) {
+                    paletteHsl.push(Color.rgbToHsl(Color.hexToRgb(state.locked[i])));
+                    continue;
+                }
+                
+                let newHsl;
+                const p = i - Math.floor(state.count / 2); // Position relative to center (-2, -1, 0, 1, 2 for 5 colors)
+                const lightnessStep = 80 / (state.count - 1);
+                const saturationStep = 40 / (state.count - 1);
+                
+                switch (state.mode) {
+                    case 'monochromatic':
+                        newHsl = { h: baseHsl.h, s: baseHsl.s, l: Math.max(10, Math.min(95, baseHsl.l + p * lightnessStep)) };
+                        break;
+                    case 'analogous':
+                        newHsl = { h: (baseHsl.h + p * hueStep + 360) % 360, s: baseHsl.s, l: baseHsl.l };
+                        break;
+                    case 'complementary':
+                         newHsl = {
+                            h: (i % 2 === 0 ? baseHsl.h : (baseHsl.h + 180) % 360),
+                            s: baseHsl.s,
+                            l: Math.max(10, Math.min(95, baseHsl.l + p * lightnessStep))
+                        };
+                        break;
+                    case 'split-complementary':
+                        const baseComp = (baseHsl.h + 180) % 360;
+                        let h = baseHsl.h;
+                        if (i === state.count - 1) h = (baseComp - hueStep + 360) % 360;
+                        if (i === state.count - 2) h = (baseComp + hueStep + 360) % 360;
+                        newHsl = { h: h, s: baseHsl.s, l: Math.max(10, Math.min(95, baseHsl.l + p * lightnessStep)) };
+                        break;
+                    case 'triadic':
+                        const h_offset = i % 3; // 0, 1, 2, 0, 1...
+                        newHsl = {
+                            h: (baseHsl.h + h_offset * 120) % 360,
+                            s: baseHsl.s,
+                            l: Math.max(10, Math.min(95, baseHsl.l + p * lightnessStep))
+                        };
+                        break;
+                    default:
+                        newHsl = { h: baseHsl.h, s: baseHsl.s, l: baseHsl.l };
+                }
+                paletteHsl.push(newHsl);
+            }
+            state.palette = paletteHsl.map(hsl => Color.rgbToHex(Color.hslToRgb(hsl)));
+        }
+
+        function render() {
+            ui.colorPicker.value = state.baseColor;
+            ui.swatchCount.value = state.count;
+            ui.swatchCountLabel.textContent = state.count;
+            ui.ruleButtons.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+            ui.formatButtons.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.format === state.displayFormat));
+
+            ui.paletteGrid.innerHTML = state.palette.map((hex, i) => {
+                const rgb = Color.hexToRgb(hex);
+                const hsl = Color.rgbToHsl(rgb);
+                const formats = {
+                    hex: { value: hex, display: hex },
+                    rgb: { value: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`, display: `${rgb.r}, ${rgb.g}, ${rgb.b}` },
+                    hsl: { value: `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`, display: `${Math.round(hsl.h)}°, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%` },
+                };
+                
+                let primaryCodeHTML = '';
+                let secondaryCodesHTML = '';
+
+                for (const format in formats) {
+                    const codeHTML = `
+                        <div class="color-code ${state.displayFormat === format ? 'primary-code' : 'secondary-code'}" data-value="${formats[format].value}">
+                            <span class="type">${format.toUpperCase()}</span>
+                            <span class="value">${formats[format].display}</span>
+                        </div>`;
+                    if (state.displayFormat === format) {
+                        primaryCodeHTML = codeHTML;
+                    } else {
+                        secondaryCodesHTML += codeHTML;
+                    }
+                }
+                
+                const contrastWhite = Color.getContrast(rgb, {r:255,g:255,b:255}).toFixed(2);
+                const contrastBlack = Color.getContrast(rgb, {r:0,g:0,b:0}).toFixed(2);
+                const passWhite = contrastWhite >= 4.5, passBlack = contrastBlack >= 4.5;
+                const locked = !!state.locked[i];
+                
+                return `
+                <div class="color-card">
+                    <div class="card__swatch" style="background-color: ${hex};" data-index="${i}">
+                         <button class="lock-btn ${locked ? 'locked' : ''}" data-index="${i}" data-tooltip="${locked ? 'Unlock' : 'Lock'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FFFFFF">
+                                ${locked 
+                                    ? '<path d="M0 0h24v24H0z" fill="none"/><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>' 
+                                    : '<path d="M0 0h24v24H0z" fill="none"/><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>'
+                                }
+                            </svg>
+                         </button>
+                    </div>
+                    <div class="card__info">
+                        <div class="color-codes-wrapper">
+                            ${primaryCodeHTML}
+                            ${secondaryCodesHTML}
+                        </div>
+                        <div class="card__accessibility">
+                            <div class="contrast-check"><span>vs White</span><div>${contrastWhite} <span class="badge ${passWhite?'pass':'fail'}">${passWhite?'Pass':'Fail'}</span></div></div>
+                            <div class="contrast-check"><span>vs Black</span><div>${contrastBlack} <span class="badge ${passBlack?'pass':'fail'}">${passBlack?'Pass':'Fail'}</span></div></div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            updateURL();
+        }
+
+        function updateState(newState) {
+            Object.assign(state, newState);
+            if (newState.count !== undefined) {
+                state.locked = state.locked.slice(0, state.count);
+                while (state.locked.length < state.count) { state.locked.push(null); }
+            }
+            generatePalette();
+            render();
+        }
+
+        function updateURL() {
+            // Only store hex without '#' and use '-' for null
+            const lockedSimple = state.locked.map(c => c ? c.substring(1) : '-');
+            const hash = btoa(JSON.stringify({ c: state.baseColor.substring(1), m: state.mode, n: state.count, l: lockedSimple, d: state.displayFormat }));
+            history.replaceState(null, '', '#' + hash);
+        }
+
+        function loadStateFromURL() {
+            try {
+                if (!window.location.hash) return;
+                const data = JSON.parse(atob(window.location.hash.substring(1)));
+                updateState({
+                    baseColor: `#${data.c}` || state.baseColor,
+                    mode: data.m || state.mode,
+                    count: data.n || state.count,
+                    locked: (data.l || []).map(c => c === '-' ? null : `#${c}`),
+                    displayFormat: data.d || state.displayFormat,
+                });
+            } catch (e) { console.error("Could not load state from URL", e); }
+        }
+
+        // Event Handlers
+        ui.colorPicker.addEventListener('input', e => updateState({ baseColor: e.target.value }));
+        ui.swatchCount.addEventListener('input', e => updateState({ count: parseInt(e.target.value) }));
+        ui.ruleButtons.addEventListener('click', e => e.target.tagName === 'BUTTON' && updateState({ mode: e.target.dataset.mode }));
+        ui.formatButtons.addEventListener('click', e => e.target.tagName === 'BUTTON' && updateState({ displayFormat: e.target.dataset.format }));
+        ui.randomBtn.addEventListener('click', () => {
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            updateState({ baseColor: randomColor });
+        });
+        
+        // ADDED: Palette grid click listener for locking and copying
+        ui.paletteGrid.addEventListener('click', e => {
+            const target = e.target;
+            const lockBtn = target.closest('.lock-btn');
+            const colorCode = target.closest('.color-code');
+            
+            if (lockBtn) {
+                const index = parseInt(lockBtn.dataset.index);
+                state.locked[index] = state.locked[index] ? null : state.palette[index];
+                updateState({}); // Re-render
+            } else if (colorCode) {
+                const value = colorCode.dataset.value;
+                navigator.clipboard.writeText(value).then(() => {
+                    const originalText = colorCode.querySelector('.value').textContent;
+                    colorCode.querySelector('.value').textContent = 'Copied!';
+                    setTimeout(() => {
+                        colorCode.querySelector('.value').textContent = originalText;
+                    }, 1200);
+                });
+            }
+        });
+        
+        // ADDED: Modal Logic
+        function generateExportCode(format) {
+            let output = '';
+            const palette = state.palette;
+            switch(format) {
+                case 'css':
+                    output = ':root {\n';
+                    palette.forEach((color, i) => { output += `  --color-primary-${i + 1}: ${color};\n`; });
+                    output += '}';
+                    break;
+                case 'scss':
+                    palette.forEach((color, i) => { output += `$color-primary-${i + 1}: ${color};\n`; });
+                    break;
+                case 'json':
+                    output = JSON.stringify(palette, null, 2);
+                    break;
+            }
+            ui.exportOutput.value = output;
+        }
+
+        function closeModal() {
+            ui.exportModalOverlay.classList.remove('visible');
+        }
+
+        ui.exportBtn.addEventListener('click', () => {
+            generateExportCode(ui.exportTabs.querySelector('.active').dataset.exportFormat);
+            ui.exportModalOverlay.classList.add('visible');
+        });
+
+        ui.closeModalBtn.addEventListener('click', closeModal);
+        ui.exportModalOverlay.addEventListener('click', (e) => {
+            if (e.target === ui.exportModalOverlay) {
+                closeModal();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && ui.exportModalOverlay.classList.contains('visible')) {
+                closeModal();
+            }
+        });
+
+        ui.exportTabs.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                ui.exportTabs.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+                generateExportCode(e.target.dataset.exportFormat);
+            }
+        });
+
+        ui.copyExportBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(ui.exportOutput.value).then(() => {
+                ui.copyFeedback.textContent = 'Copied!';
+                ui.copyFeedback.style.opacity = 1;
+                setTimeout(() => { ui.copyFeedback.style.opacity = 0; }, 2000);
+            }).catch(err => {
+                ui.copyFeedback.textContent = 'Failed!';
+                console.error('Failed to copy text: ', err);
+            });
+        });
+        
+        // Initialization
+        loadStateFromURL();
+        if(state.palette.length === 0) { // Only generate if not loaded from URL
+             generatePalette();
+        }
+        render();
+    });
+    </script>
+</body>
+</html>
